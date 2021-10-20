@@ -59,7 +59,7 @@ Esimerkki määritystiedostosta SIPconfig.xml, jossa sipohttp-liikenne ohjataan 
     </acsconfig>
 
 
-#Käyttö
+# Käyttö
 
 Pluginin asennus luo Kohan rajapintaan uuden endpointin /api/v1/contrib/kohasuomi/sipmessages
 
