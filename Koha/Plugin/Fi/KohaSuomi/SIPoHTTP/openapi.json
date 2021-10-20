@@ -1,0 +1,46 @@
+{
+	"/sipmessages": {
+		"post": {
+			"x-mojo-to": "Fi::KohaSuomi::SIPoHTTP::SIPoHTTP#process",
+			"operationId": "SIPoHTTP",
+			"tags": [
+				"sipmessages"
+			],
+			"parameters": [
+				{
+					"name": "query",
+					"in": "query",
+					"description": "sip in XML.",
+					"type": "string"
+				}
+			],
+			"consumes": [
+				"application/xml"
+			],
+			"produces": [
+				"application/xml"
+			],
+			"responses": {
+				"200": {
+					"description": "SIP2 message ok",
+					"schema": {
+						"type": "string",
+  						"additionalProperties": true
+					}
+				},
+				"404": {
+					"description": "An error occured",
+					"schema": {
+						"type": "object",
+						"properties": {
+							"error": {
+								"description": "An explanation for the error",
+								"type": "string"
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+}
