@@ -111,6 +111,10 @@ sub process {
 }
 
 sub tradeSip {
+    
+    my $sip_request_start_time;
+    my $sip_response_recv_time;
+    my $response_time;
 
     my ($login, $password, $host, $port, $command_message, $c) = @_;
 
@@ -131,11 +135,21 @@ sub tradeSip {
 
     my $respdata = "";
     
+    $sip_request_start_time = time();
+    
     print $sipsock $loginsip . $terminator;
     
     $log->debug($login . " ---> ". $loginsip);
 
     $sipsock->recv($respdata, 1024);
+    
+    $sip_response_recv_time = time();
+    
+    $response_time = ($sip_response_recv_time - $sip_request_start_time);
+    
+    if ($response_time > 4) {
+        $log->warn ("Slow response (". $response_time . "sec) from sip server for login message 93 (". $login . ": ".     $loginsip .")");
+    }
     
     $log->debug($login . " <--- " . $respdata);
     
@@ -150,13 +164,23 @@ sub tradeSip {
     if ($respdata eq '941') {
 
         $log->info("Login OK. Sending: $command_message");
+        
+        $sip_request_start_time = time();
 
         print $sipsock $command_message . $terminator;
         
         $log->debug($login . " ---> ". $command_message);
 
-        $sipsock->recv($respdata, 1024);
+        $sipsock->recv($respdata, 8192);
         
+        $sip_response_recv_time = time();
+        
+        $response_time = ($sip_response_recv_time - $sip_request_start_time);
+        
+        if ($response_time > 4) {
+            $log->warn("Slow response (". $response_time . "sec)  from sip server for command message : ". $command_message);
+        }
+             
         $log->debug($login . " <--- ". $respdata);
         
         $sipsock->flush;
@@ -180,8 +204,6 @@ sub tradeSip {
 }
 
 sub buildLogin {
-
-    my ($login, $password, $c) = @_;
     
     my $login_mes = "9300CN" . shift . "|CO" . shift . "|CPSIP2OHTTP|" . "AY0AZ";
     
@@ -192,30 +214,6 @@ sub buildLogin {
     $log->info("sip message with checksum: $fullpkt");
     
     return $fullpkt;
-}
-
-sub verify_cksum {
-     my $debug;
-     my $pkt = shift;
-     my $cksum;
-     my $shortsum;
- 
-     if ($pkt =~ /AZ(....)$/) {
-         $debug and warn "verify_cksum: sum ($1) detected";
-     } else {
-         warn "verify_cksum: no sum detected";
-         return 0; # No checksum at end
-     }
-     # return 0 if (substr($pkt, -6, 2) ne "AZ");
- 
-     # Convert the checksum back to hex and calculate the sum of the
-     # pack without the checksum.
-     $cksum = hex($1);
-     $shortsum = unpack("%16C*", substr($pkt, 0, -4));
- 
-     # The checksum is valid if the hex sum, plus the checksum of the 
-     # base packet short when truncated to 16 bits.
-     return (($cksum + $shortsum) & 0xFFFF) == 0;
 }
 
 sub buildXml {
