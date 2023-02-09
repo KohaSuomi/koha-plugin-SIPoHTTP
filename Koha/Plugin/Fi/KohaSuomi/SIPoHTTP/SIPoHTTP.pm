@@ -52,7 +52,7 @@ sub process {
 
     $log->info("Request received.");
     
-    $log->debug("Received request XML: ". $xmlrequest);
+    $log->info("Received request XML: ". $xmlrequest);
     
     #my $validation = validateXml( $c, $xmlrequest );
     my $validation = 1;
