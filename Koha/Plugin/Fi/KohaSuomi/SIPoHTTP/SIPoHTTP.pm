@@ -50,9 +50,9 @@ sub process {
     my $body       = $c->req->body;
     my $xmlrequest = $c->param('query') || $body || '';
 
-    $log->info("Request received.");
+    $log->debug("Request received.");
     
-    $log->info("Received request XML: ". $xmlrequest);
+    $log->debug("Received request XML: ". $xmlrequest);
     
     #my $validation = validateXml( $c, $xmlrequest );
     my $validation = 1;
@@ -104,7 +104,7 @@ sub process {
 
     return try {
         $c->render(status => 200, text => $xmlresponse);
-        $log->info("XML response passed to endpoint.");
+        $log->debug("XML response passed to endpoint.");
     } catch {
         Koha::Exceptions::rethrow_exception($_);
     }
@@ -131,7 +131,7 @@ sub tradeSip {
     # Set perl to expect the same record terminator it is sending
     $/ = $terminator;
 
-    $log->info("Trying login: $loginsip");
+    $log->debug("Trying login: $loginsip");
 
     my $respdata = "";
     
@@ -139,7 +139,7 @@ sub tradeSip {
     
     print $sipsock $loginsip . $terminator;
     
-    $log->debug($login . " ---> ". $loginsip);
+    $log->info($login . " ---> ". $loginsip);
 
     $sipsock->recv($respdata, 1024);
     
@@ -151,7 +151,7 @@ sub tradeSip {
         $log->warn ("Slow response (". $response_time . "sec) from sip server for login message 93 (". $login . ": ".     $loginsip .")");
     }
     
-    $log->debug($login . " <--- " . $respdata);
+    $log->info($login . " <--- " . $respdata);
     
     $sipsock->flush;
     
@@ -163,13 +163,13 @@ sub tradeSip {
     
     if ($respdata eq '941') {
 
-        $log->info("Login OK. Sending: $command_message");
+        $log->debug("Login OK. Sending: $command_message");
         
         $sip_request_start_time = time();
 
         print $sipsock $command_message . $terminator;
         
-        $log->debug($login . " ---> ". $command_message);
+        $log->info($login . " ---> ". $command_message);
 
         $sipsock->recv($respdata, 8192);
         
@@ -181,14 +181,14 @@ sub tradeSip {
             $log->warn("Slow response (". $response_time . "sec)  from sip server for command message : ". $command_message);
         }
              
-        $log->debug($login . " <--- ". $respdata);
+        $log->info($login . " <--- ". $respdata);
         
         $sipsock->flush;
 
         $sipsock->shutdown(SHUT_WR);
         $sipsock->shutdown(SHUT_RDWR);    # we stopped using this socket
         $sipsock->close;
-        $log->info("Received: $respdata");
+        $log->debug("Received: $respdata");
 
         return $respdata;
     }
@@ -211,7 +211,7 @@ sub buildLogin {
     my $checksum = (-unpack('%16C*', $login_mes) & 0xFFFF);
     my $fullpkt = sprintf("%s%4X", $login_mes, $checksum);
     
-    $log->info("sip message with checksum: $fullpkt");
+    $log->debug("sip message with checksum: $fullpkt");
     
     return $fullpkt;
 }
@@ -365,7 +365,7 @@ sub validateXml {
     try {
         my $xmldoc = $parser->load_xml(string => $xmlbody);
         $schema->validate($xmldoc);
-        $log->info("XML Validated OK.");
+        $log->debug("XML Validated OK.");
         return 1;
     } catch {
         $log->error("Could not validate XML - @_");
