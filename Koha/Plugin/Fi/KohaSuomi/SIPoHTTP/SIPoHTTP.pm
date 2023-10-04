@@ -139,7 +139,7 @@ sub tradeSip {
     
     print $sipsock $loginsip . $terminator;
     
-    $log->info($login . " ---> ". $loginsip);
+    $log->debug($login . " ---> ". $loginsip);
 
     $sipsock->recv($respdata, 1024);
     
@@ -151,7 +151,7 @@ sub tradeSip {
         $log->warn ("Slow response (". $response_time . "sec) from sip server for login message 93 (". $login . ": ".     $loginsip .")");
     }
     
-    $log->info($login . " <--- " . $respdata);
+    $log->debug($login . " <--- " . $respdata);
     
     $sipsock->flush;
     
@@ -169,8 +169,13 @@ sub tradeSip {
 
         print $sipsock $command_message . $terminator;
         
-        $log->info($login . " ---> ". $command_message);
-
+        if (($command_message =~ /^9300/) || ($command_message =~ /^9900/)) {
+            $log->debug($login . " ---> ". $command_message);
+        }
+        else {
+            $log->info($login . " ---> ". $command_message);
+        }
+        
         $sipsock->recv($respdata, 8192);
         
         $sip_response_recv_time = time();
