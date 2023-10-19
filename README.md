@@ -129,7 +129,7 @@ Lokeihin merkitään myös WARN-tasolla tilanteet, joissa sanoman vastaanotosta 
 Lokikonfiguraation/lokituksen puuttuminen ei estä sipohttp:n toimintaa.
 
 Esimerkki log4perl-configuraatiosta:
-
+```
 log4perl.logger.sipohttp = DEBUG, SIPoHTTP
 log4perl.appender.SIPoHTTP=Log::Log4perl::Appender::File
 log4perl.appender.SIPoHTTP.filename=/var/log/koha/sipohttp.log
@@ -140,3 +140,4 @@ log4perl.appender.SIPoHTTP.recreate=true
 log4perl.appender.SIPoHTTP.layout=PatternLayout
 log4perl.appender.SIPoHTTP.layout.ConversionPattern=[%d{yyyy-MM-dd HH:mm:ss,SSS}] %p %m%n
 log4perl.appender.SIPoHTTP.utf8=1
+```
