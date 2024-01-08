@@ -109,18 +109,20 @@ Paluuviesti välitetään rajapinnan vastaukseksi POST-pyyntöön response bodys
 Mikäli sip2-laitteen tunnistautuminen ei onnistu, palautetaan rajapintaan sip-palvelimen palauttama "940"-viesti ja prosessi keskeytyy.
 
 
-# Virhetilanteet ja loki
+# Virhetilanteet
 
 SipOHttp-skripti palauttaa rajapinnan kautta seuraavat virheilmoitukset response bodyssa POST-kyselyihin:
 
--XML validointi epäonnistui skeematiedostoa vastaan: HTTP-virhe 400 viestillä "Invalid Request. Validation failed."
--Jos XML-viestin "login:" tai "password:" parametria vastaavia asetuksia ei löydy XML-konfiguraatiotiedostoista: HTTP 400 "Invalid request. No config found for login device."
--Jos XML-viestin "login:" tai "password:" parametrit ovat puutteelliset: HTTP 400 "Invalid request. Missing login/pw in XML."
--Jos XML-viestin "request" eli SIP2-viesti puuttuu: HTTP 400 "Invalid request. Missing SIP Request in XML."
--Jos sip2-palvelimeen ei saa muodostettua yhteyttä/muu virhe: HTTP 500 "Something went wrong, check the logs."
--Jos SIP2-palvelin aikakatkaisee yhteyden: Paluu-XML, jossa response-osa tyhjä.
+- XML validointi epäonnistui skeematiedostoa vastaan: HTTP-virhe 400 viestillä "Invalid Request. Validation failed."
+- Jos XML-viestin "login:" tai "password:" parametria vastaavia asetuksia ei löydy XML-konfiguraatiotiedostoista: HTTP 400 "Invalid request. No config found for login device."
+- Jos XML-viestin "login:" tai "password:" parametrit ovat puutteelliset: HTTP 400 "Invalid request. Missing login/pw in XML."
+- Jos XML-viestin "request" eli SIP2-viesti puuttuu: HTTP 400 "Invalid request. Missing SIP Request in XML."
+- Jos sip2-palvelimeen ei saa muodostettua yhteyttä/muu virhe: HTTP 500 "Something went wrong, check the logs."
+- Jos SIP2-palvelin aikakatkaisee yhteyden: Paluu-XML, jossa response-osa tyhjä.
 
-Lokit: Sipohttp:n määritykset lokitasosta ja lokin sijainnista määritetään log4perl.conf -tiedostoon.
+# Lokit
+
+Sipohttp:n määritykset lokitasosta ja lokin sijainnista määritetään log4perl.conf -tiedostoon.
 
 DEBUG-tasolla sipohttp lokittaa jokaisen rajapintaan saapuvan XML-viestin sisällön ja SIP2-viestiliikenteen SIP2-palvelimen kanssa + virhetilanteet.
 ERROR-taso lokittaa vain virheet ja kriittiset virheet (jos SIP2-palvelimeen ei saa luotua socket-yhteyttä).
