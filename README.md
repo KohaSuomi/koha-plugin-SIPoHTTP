@@ -110,7 +110,7 @@ Tähän endpointiin voi lähettää XML-viestit sisältäen SIP2-viestin SIP2-pa
 Esimerkki:
 ```
 <?xml version="1.0" encoding="utf-8"?><ns1:sip xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:ns1="https://koha-suomi.fi/sipschema.xsd" login="TESTSIPDEVICE" password="xxxxxxxx"><request>6300020240830    092403          AOTUPK|AAVASKI221121|AD1234|AY7AZF156</request></ns1:sip>
-``
+```
 
 Login- ja password-elementit sisältävät kirjautuvan laitteen tunnukset tunnistautumista varten, request-elementti sisältää SIP2-palvelimelle välitettävän SIP2-protokollan mukaisen viestin. Laitteen tunnusten tulee olla määritettynä SIP2-palvelimen konfiguraatiotiedostoon ja Kohaan Automaatti-asiakastyypille.
 
