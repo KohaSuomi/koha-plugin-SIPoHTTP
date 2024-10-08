@@ -87,7 +87,7 @@ log4perl.appender.SIPoHTTP.utf8=1
 
 Pluginin asennus luo Kohan rajapintaan uuden endpointin /api/v1/contrib/kohasuomi/sipmessages
 
-Tähän endpointiin voi lähettää XML-viestit sisältäen SIP2-viestin SIP2-palvelinta varten. Viestin tulisi noudattaa seuraavan XML-skeeman mukaista rakennetta:
+Tähän endpointiin voi lähettää XML-viestit sisältäen SIP2-viestin SIP2-palvelinta varten. Viestin tulisi noudattaa seuraavan XML-skeeman mukaista rakennetta (skeemavalidointi ei ole tällä hetkellä käytössä):
 
 ```
 <?xml version="1.0" encoding="UTF-8"?>
