@@ -182,12 +182,25 @@ sub tradeSip {
         
         $response_time = ($sip_response_recv_time - $sip_request_start_time);
         
-        if ($response_time > 4) {
-            $log->warn("Slow response (". $response_time . "sec)  from sip server for command message : ". $command_message);
+        if (($command_message =~ /^9300/) || ($command_message =~ /^9900/)) {
+            
+            if ($response_time > 4) {
+
+                $log->warn($sip_request_start_time . " " . $login . " ---> ". $command_message);
+                $log->warn($sip_response_recv_time . " " . $login . " <--- ". $respdata);
+                $log->warn("Slow response (". $response_time . "sec)  from sip server for command message : ". $command_message);   
+            }
+        }
+
+        else {
+            
+            if ($response_time > 4) {
+                
+                $log->warn("Slow response (". $response_time . "sec)  from sip server for command message : ". $command_message);
+            }
+            $log->info($login . " <--- ". $respdata); 
         }
              
-        $log->info($login . " <--- ". $respdata);
-        
         $sipsock->flush;
 
         $sipsock->shutdown(SHUT_WR);
