@@ -182,13 +182,13 @@ sub tradeSip {
         
         $response_time = ($sip_response_recv_time - $sip_request_start_time);
         
-        if (($command_message =~ /^9300/) || ($command_message =~ /^9900/)) {
+        if ($command_message =~ /^(9300|9900)/) {
+            my $msg_type = $1 eq '9300' ? 'login' : 'ping';
             
-            if ($response_time > 4) {
-
-                $log->warn($sip_request_start_time . " " . $login . " ---> ". $command_message);
-                $log->warn($sip_response_recv_time . " " . $login . " <--- ". $respdata);
-                $log->warn("Slow response (". $response_time . "sec)  from sip server for command message : ". $command_message);   
+            if ($response_time > 1) {
+                $log->warn($login . " ---> ". $command_message);
+                $log->warn($login . " <--- ". $respdata);
+                $log->warn("Slow response (". $response_time . "sec) from sip server for $msg_type message : ". $command_message);
             }
         }
 
