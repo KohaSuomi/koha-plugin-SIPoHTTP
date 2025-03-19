@@ -30,7 +30,7 @@ our $metadata = {
     minimum_version => '20.05',
     maximum_version => '',
     version         => $VERSION,
-    description     => 'Adds SIPoHTTP support for Koha',
+    description     => 'Adds SIPoHTTP support for Koha. (Paikalliskannat)',
 };
 ## This is the minimum code required for a plugin's 'new' method
 ## More can be added, but none should be removed
