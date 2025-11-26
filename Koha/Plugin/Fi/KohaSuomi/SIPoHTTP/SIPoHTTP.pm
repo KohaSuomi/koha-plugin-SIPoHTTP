@@ -315,7 +315,10 @@ sub extractServer {
     my ($term,       $pass) = getLogin($xmlmessage);
 
     #Handle all sip config XML files under /KOHA_CONF/SIPconfig
-    foreach my $file (glob("$CONFPATH/SIPconfig/*.xml")) {
+    #foreach my $file (glob("$CONFPATH/SIPconfig/*.xml")) {
+
+    # SIP configuration has been moved to a single file sipconfig.xml under KOHA_CONF -path
+    my $file = "$CONFPATH/sipconfig.xml";
 
         my $parser = XML::LibXML->new();
         my $doc    = XML::LibXML->load_xml(location => $file);
@@ -363,7 +366,7 @@ sub extractServer {
 
         }
 
-    }
+    # }
 
     $log->error("Missing SIPoHTTP account for $term in sip config XMLs");
     return 0;
