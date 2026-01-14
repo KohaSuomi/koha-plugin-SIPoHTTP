@@ -290,7 +290,6 @@ sub handle_99 {
     } catch {
         Koha::Exceptions::rethrow_exception($_);
     }
-    return;
 }
 
 sub buildLogin {
