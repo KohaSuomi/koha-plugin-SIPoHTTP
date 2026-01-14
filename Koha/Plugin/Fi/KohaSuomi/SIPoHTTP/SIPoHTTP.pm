@@ -241,6 +241,15 @@ sub handle_99 {
     unless ($auth_result) {
 
         $log->error("Authentication failed on 99 message for user: $login");
+
+        my $response_message = "940";
+        try {
+            $c->render(status => 200, text => buildXml($response_message));
+            $log->debug("940 response sent for failed authentication.");
+        } catch {
+            Koha::Exceptions::rethrow_exception($_);
+        }
+        return;
     }
 
     # Get the authenticated user's branchcode
@@ -281,6 +290,7 @@ sub handle_99 {
     } catch {
         Koha::Exceptions::rethrow_exception($_);
     }
+    return;
 }
 
 sub buildLogin {
