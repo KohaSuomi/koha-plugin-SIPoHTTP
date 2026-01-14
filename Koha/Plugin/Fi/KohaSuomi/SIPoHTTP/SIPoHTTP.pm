@@ -28,10 +28,12 @@ use Try::Tiny;
 use Mojo::Log;
 use File::Basename;
 use C4::Context;
+use C4::Auth qw(checkpw_internal);
 use Encode;
 use utf8;
 use strict;
 use warnings qw( all );
+use Koha::Patrons;
 use Log::Log4perl;
 
 my $CONFPATH = dirname($ENV{'KOHA_CONF'});
@@ -51,9 +53,9 @@ sub process {
     my $xmlrequest = $c->param('query') || $body || '';
 
     $log->debug("Request received.");
-    
+
     $log->debug("Received request XML: ". $xmlrequest);
-    
+
     #my $validation = validateXml( $c, $xmlrequest );
     my $validation = 1;
 
@@ -74,7 +76,7 @@ sub process {
         $c->render(text => "Invalid request. Missing login/pw in XML.", status => 400);
         return;
     }
-    
+
     my $sipmes = extractSip($xmlrequest, $c);
 
     unless ($sipmes) {
@@ -82,6 +84,12 @@ sub process {
         $log->error("Invalid request. Missing SIP Request in XML.");
 
         $c->render(text => "Invalid request. Missing SIP Request in XML.", status => 400);
+        return;
+    }
+
+    # Check if the command message starts with '99'
+    if ($sipmes =~ /^99/) {
+        handle_99($c, $login, $password, $sipmes);
         return;
     }
 
@@ -111,7 +119,7 @@ sub process {
 }
 
 sub tradeSip {
-    
+
     my $sip_request_start_time;
     my $sip_response_recv_time;
     my $response_time;
@@ -134,57 +142,57 @@ sub tradeSip {
     $log->debug("Trying login: $loginsip");
 
     my $respdata = "";
-    
+
     $sip_request_start_time = time();
-    
+
     print $sipsock $loginsip . $terminator;
-    
+
     $log->debug($login . " ---> ". $loginsip);
 
     $sipsock->recv($respdata, 1024);
-    
+
     $sip_response_recv_time = time();
-    
+
     $response_time = ($sip_response_recv_time - $sip_request_start_time);
-    
+
     if ($response_time > 4) {
         $log->warn ("Slow response (". $response_time . "sec) from sip server for login message 93 (". $login . ": ".     $loginsip .")");
     }
-    
+
     $log->debug($login . " <--- " . $respdata);
-    
+
     $sipsock->flush;
-    
+
     #remove carriage return/line feed from response
     $respdata =~ s/\r//g;
     $respdata =~ s/\n//g;
-    
+
     $respdata = substr($respdata, 0, 3);
-    
+
     if ($respdata eq '941') {
 
         $log->debug("Login OK. Sending: $command_message");
-        
+
         $sip_request_start_time = time();
 
         print $sipsock $command_message . $terminator;
-        
+
         if (($command_message =~ /^9300/) || ($command_message =~ /^9900/)) {
             $log->debug($login . " ---> ". $command_message);
         }
         else {
             $log->info($login . " ---> ". $command_message);
         }
-        
+
         $sipsock->recv($respdata, 8192);
-        
+
         $sip_response_recv_time = time();
-        
+
         $response_time = ($sip_response_recv_time - $sip_request_start_time);
-        
+
         if ($command_message =~ /^(9300|9900)/) {
             my $msg_type = $1 eq '9300' ? 'login' : 'ping';
-            
+
             if ($response_time > 1) {
                 $log->warn($login . " ---> ". $command_message);
                 $log->warn($login . " <--- ". $respdata);
@@ -193,14 +201,14 @@ sub tradeSip {
         }
 
         else {
-            
+
             if ($response_time > 4) {
-                
+
                 $log->warn("Slow response (". $response_time . "sec)  from sip server for command message : ". $command_message);
             }
-            $log->info($login . " <--- ". $respdata); 
+            $log->info($login . " <--- ". $respdata);
         }
-             
+
         $sipsock->flush;
 
         $sipsock->shutdown(SHUT_WR);
@@ -210,7 +218,7 @@ sub tradeSip {
 
         return $respdata;
     }
-    
+
     $log->error("Login failed for $login. Sip server response: '$respdata'. Expected '941'. Can't process attached SIP message.");
 
     $sipsock->flush;
@@ -221,23 +229,77 @@ sub tradeSip {
     return $respdata;
 }
 
+sub handle_99 {
+
+    my ($c, $login, $password, $command_message) = @_;
+
+    $log->debug("Handling command message starting with 99: $command_message");
+
+    # Verify the login and password using Koha's authentication method
+    my $auth_result = checkpw_internal($login, $password);
+
+    unless ($auth_result) {
+
+        $log->error("Authentication failed on 99 message for user: $login");
+    }
+
+    # Get the authenticated user's branchcode
+    my $borrower = Koha::Patrons->find({ userid => $login });
+
+    unless ($borrower) {
+        $log->error("Could not find borrower account for user: $login");
+    }
+
+    my $branchcode = $borrower->branchcode;
+    $log->debug("User $login authenticated. Branch code: $branchcode");
+
+    # Process the 99 command message here
+    # 98YYYYYN02500520251217    1301592.00AOOUKA|BXYYYYYYYYYYYNYYYY|
+
+    my ($sec, $min, $hour, $mday, $mon, $year) = localtime();
+    my $timestamp = sprintf("%04d%02d%02d    %02d%02d%02d", $year + 1900, $mon + 1, $mday, $hour, $min, $sec);
+    $log->debug("Generated timestamp for response: $timestamp");
+
+    my $response_message = "98YYYYYN" ."025" . "005" . $timestamp . "2.00". "AO" . $branchcode . "|BXYYYYYYYYYYYNYYYY|";
+    $log->debug("Constructed response message for 99 command: $response_message");
+
+    #check for AY/AZ field and add if found
+    if (length($command_message) >= 9 && substr($command_message, -9, 2) eq 'AY') {
+
+        my $checksum = (-unpack('%16C*', $response_message) & 0xFFFF);
+
+        my $sequence_no = substr($command_message, -7, 1);
+        $response_message .= "AY" . $sequence_no . "AZ";
+
+        $response_message = sprintf("%s%4X", $response_message, $checksum);
+        $log->debug("Response message with sequence number + checksum: $response_message");
+    }
+
+    try {
+        $c->render(status => 200, text => buildXml($response_message));
+        $log->debug("XML response passed to endpoint.");
+    } catch {
+        Koha::Exceptions::rethrow_exception($_);
+    }
+}
+
 sub buildLogin {
-    
+
     my $login_mes = "9300CN" . shift . "|CO" . shift . "|CPSIP2OHTTP|" . "AY0AZ";
-    
+
     #from https://fossies.org/linux/koha/C4/SIP/Sip/Checksum.pm
     my $checksum = (-unpack('%16C*', $login_mes) & 0xFFFF);
     my $fullpkt = sprintf("%s%4X", $login_mes, $checksum);
-    
+
     $log->debug("sip message with checksum: $fullpkt");
-    
+
     return $fullpkt;
 }
 
 sub buildXml {
 
     my $responsemessage = shift;
-    
+
 	my $doc = XML::LibXML::Document->new('1.0', 'utf-8');
 
 	my $root = $doc->createElement('ns1:sip');
@@ -276,7 +338,7 @@ sub extractSip {
     my ($node) = $xc->findnodes('//request');
 
     my $siprequest = $node->textContent;
-    
+
     #remove carriage return/line feed from request
     $siprequest =~ s/\r//g;
     $siprequest =~ s/\n//g;
@@ -315,10 +377,7 @@ sub extractServer {
     my ($term,       $pass) = getLogin($xmlmessage);
 
     #Handle all sip config XML files under /KOHA_CONF/SIPconfig
-    #foreach my $file (glob("$CONFPATH/SIPconfig/*.xml")) {
-
-    # SIP configuration has been moved to a single file sipconfig.xml under KOHA_CONF -path
-    my $file = "$CONFPATH/sipconfig.xml";
+    foreach my $file (glob("$CONFPATH/SIPconfig/*.xml")) {
 
         my $parser = XML::LibXML->new();
         my $doc    = XML::LibXML->load_xml(location => $file);
@@ -366,7 +425,7 @@ sub extractServer {
 
         }
 
-    # }
+    }
 
     $log->error("Missing SIPoHTTP account for $term in sip config XMLs");
     return 0;
