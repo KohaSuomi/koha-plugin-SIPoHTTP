@@ -243,6 +243,9 @@ sub handle_99 {
         $log->error("Authentication failed on 99 message for user: $login");
 
         my $response_message = "940";
+        $response_message =~ s/\r//g;
+        $response_message =~ s/\n//g;
+
         try {
             $c->render(status => 200, text => buildXml($response_message));
             $log->debug("940 response sent for failed authentication.");
@@ -271,6 +274,8 @@ sub handle_99 {
 
     my $response_message = "98YYYYYN" ."025" . "005" . $timestamp . "2.00". "AO" . $branchcode . "|BXYYYYYYYYYYYNYYYY|";
     $log->debug("Constructed response message for 99 command: $response_message");
+    $response_message =~ s/\r//g;
+    $response_message =~ s/\n//g;
 
     #check for AY/AZ field and add if found
     if (length($command_message) >= 9 && substr($command_message, -9, 2) eq 'AY') {
@@ -282,6 +287,9 @@ sub handle_99 {
 
         $response_message = sprintf("%s%4X", $response_message, $checksum);
         $log->debug("Response message with sequence number + checksum: $response_message");
+        #remove carriage return/line feed from response
+        $response_message =~ s/\r//g;
+        $response_message =~ s/\n//g;
     }
 
     try {
