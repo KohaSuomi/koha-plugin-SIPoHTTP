@@ -6,7 +6,7 @@ use base qw(Koha::Plugins::Base);
 ## We will also need to include any Koha libraries we want to access
 use C4::Context;
 use utf8;
-
+use C4::Languages;
 
 
 ## It's good practice to use Modern::Perl
@@ -32,6 +32,24 @@ our $metadata = {
     version         => $VERSION,
     description     => 'Adds SIPoHTTP support for Koha. (Paikalliskannat)',
 };
+sub get_localized_metadata {
+    my ($self) = @_;
+    my $lang = C4::Languages::getlanguage() || 'en';
+    my ($name, $description);
+
+    if ($lang eq 'sv-SE') {
+        $name = "SIPoHTTP";
+        $description = "Lägger till SIPoHTTP-stöd för Koha. (Lokala databaser)";
+    
+    } elsif ($lang eq 'fi-FI' ) {
+        $name = "SIPoHTTP";
+        $description = "Lisää SIPoHTTP-tuen Koha:an. (Paikalliskannat)";
+    } else {
+        $name = "SIPoHTTP";
+        $description = "Adds SIPoHTTP support for Koha. (Local databases)";
+    }
+    return ($name, $description);
+}
 ## This is the minimum code required for a plugin's 'new' method
 ## More can be added, but none should be removed
 sub new {
@@ -43,6 +61,9 @@ sub new {
     ## This runs some additional magic and checking
     ## and returns our actual 
     my $self = $class->SUPER::new($args);
+    my ($name, $description) = $self->get_localized_metadata();
+    $self->{'metadata'}->{'name'} = $name;
+    $self->{'metadata'}->{'description'} = $description;
     return $self;
 }
 ## This is the 'install' method. Any database tables or other setup that should
