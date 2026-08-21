@@ -126,12 +126,20 @@ sub tradeSip {
 
     my ($login, $password, $host, $port, $command_message, $c) = @_;
 
+    # Validate credentials directly against Koha database
+    my $auth_result = checkpw_internal($login, $password);
+
+    unless ($auth_result) {
+        $log->error("Authentication failed for $login");
+        return "940";
+    }
+
+    $log->debug("Authentication successful for $login");
+
     my $sipsock = IO::Socket::INET->new(PeerAddr => $host, PeerPort => $port, Proto => 'tcp')
         or die $log->fatal("Can't create a socket for sipserver. Sipserver down?");
 
     $sipsock->autoflush(1);
-
-    my $loginsip = buildLogin($login, $password);
 
     my $terminator = q{};
     $terminator = ($terminator eq 'CR') ? $CR : $CRLF;
@@ -139,92 +147,51 @@ sub tradeSip {
     # Set perl to expect the same record terminator it is sending
     $/ = $terminator;
 
-    $log->debug("Trying login: $loginsip");
+    $log->debug("Sending command message for user $login");
 
     my $respdata = "";
 
     $sip_request_start_time = time();
 
-    print $sipsock $loginsip . $terminator;
+    print $sipsock $command_message . $terminator;
 
-    $log->debug($login . " ---> ". $loginsip);
+    if (($command_message =~ /^9300/) || ($command_message =~ /^9900/)) {
+        $log->debug($login . " ---> ". $command_message);
+    }
+    else {
+        $log->info($login . " ---> ". $command_message);
+    }
 
-    $sipsock->recv($respdata, 1024);
+    $sipsock->recv($respdata, 8192);
 
     $sip_response_recv_time = time();
 
     $response_time = ($sip_response_recv_time - $sip_request_start_time);
 
-    if ($response_time > 4) {
-        $log->warn ("Slow response (". $response_time . "sec) from sip server for login message 93 (". $login . ": ".     $loginsip .")");
-    }
+    if ($command_message =~ /^(9300|9900)/) {
+        my $msg_type = $1 eq '9300' ? 'login' : 'ping';
 
-    $log->debug($login . " <--- " . $respdata);
+        if ($response_time > 1) {
+            $log->warn($login . " ---> ". $command_message);
+            $log->warn($login . " <--- ". $respdata);
+            $log->warn("Slow response (". $response_time . "sec) from sip server for $msg_type message : ". $command_message);
+        }
+    }
+    else {
+
+        if ($response_time > 4) {
+
+            $log->warn("Slow response (". $response_time . "sec)  from sip server for command message : ". $command_message);
+        }
+        $log->info($login . " <--- ". $respdata);
+    }
 
     $sipsock->flush;
 
-    #remove carriage return/line feed from response
-    $respdata =~ s/\r//g;
-    $respdata =~ s/\n//g;
-
-    $respdata = substr($respdata, 0, 3);
-
-    if ($respdata eq '941') {
-
-        $log->debug("Login OK. Sending: $command_message");
-
-        $sip_request_start_time = time();
-
-        print $sipsock $command_message . $terminator;
-
-        if (($command_message =~ /^9300/) || ($command_message =~ /^9900/)) {
-            $log->debug($login . " ---> ". $command_message);
-        }
-        else {
-            $log->info($login . " ---> ". $command_message);
-        }
-
-        $sipsock->recv($respdata, 8192);
-
-        $sip_response_recv_time = time();
-
-        $response_time = ($sip_response_recv_time - $sip_request_start_time);
-
-        if ($command_message =~ /^(9300|9900)/) {
-            my $msg_type = $1 eq '9300' ? 'login' : 'ping';
-
-            if ($response_time > 1) {
-                $log->warn($login . " ---> ". $command_message);
-                $log->warn($login . " <--- ". $respdata);
-                $log->warn("Slow response (". $response_time . "sec) from sip server for $msg_type message : ". $command_message);
-            }
-        }
-
-        else {
-
-            if ($response_time > 4) {
-
-                $log->warn("Slow response (". $response_time . "sec)  from sip server for command message : ". $command_message);
-            }
-            $log->info($login . " <--- ". $respdata);
-        }
-
-        $sipsock->flush;
-
-        $sipsock->shutdown(SHUT_WR);
-        $sipsock->shutdown(SHUT_RDWR);    # we stopped using this socket
-        $sipsock->close;
-        $log->debug("Received: $respdata");
-
-        return $respdata;
-    }
-
-    $log->error("Login failed for $login. Sip server response: '$respdata'. Expected '941'. Can't process attached SIP message.");
-
-    $sipsock->flush;
     $sipsock->shutdown(SHUT_WR);
     $sipsock->shutdown(SHUT_RDWR);    # we stopped using this socket
     $sipsock->close;
+    $log->debug("Received: $respdata");
 
     return $respdata;
 }
@@ -298,19 +265,6 @@ sub handle_99 {
     } catch {
         Koha::Exceptions::rethrow_exception($_);
     }
-}
-
-sub buildLogin {
-
-    my $login_mes = "9300CN" . shift . "|CO" . shift . "|CPSIP2OHTTP|" . "AY0AZ";
-
-    #from https://fossies.org/linux/koha/C4/SIP/Sip/Checksum.pm
-    my $checksum = (-unpack('%16C*', $login_mes) & 0xFFFF);
-    my $fullpkt = sprintf("%s%4X", $login_mes, $checksum);
-
-    $log->debug("sip message with checksum: $fullpkt");
-
-    return $fullpkt;
 }
 
 sub buildXml {
